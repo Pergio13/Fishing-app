@@ -1,79 +1,1368 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fishing Forecast Pro</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🎣 Fishing Forecast Pro</title>
+  
+  <!-- Leaflet Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ===== GLOBAL STYLES ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
     
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2972/2972169.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-    <style>
-        :root { --bg: #1a252f; --accent: #3498db; --text: #ecf0f1; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; overflow-x: hidden; }
-        
-        .header { padding: 20px; text-align: center; background: rgba(0,0,0,0.2); }
-        .score-box { font-size: 5rem; font-weight: 800; color: var(--accent); margin: 10px 0; }
-        
-        #map { height: 300px; width: 90%; margin: 20px auto; border-radius: 15px; border: 2px solid var(--accent); }
-        
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; }
-        .stat-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; text-align: center; }
-        .stat-val { display: block; font-size: 1.2rem; font-weight: bold; color: var(--accent); }
-        
-        .footer { padding: 20px; font-size: 0.8rem; color: #7f8c8d; text-align: center; }
-    </style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #1a2980, #26d0ce);
+      color: #333;
+      overflow-x: hidden;
+      height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .app-container {
+      display: flex;
+      height: 100vh;
+      position: relative;
+    }
+    
+    /* ===== LOADING OVERLAY ===== */
+    #loadingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      color: white;
+    }
+    
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 4px solid #4CAF50;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* ===== SIDEBAR ===== */
+    #sidebar {
+      width: 280px;
+      background: #1a252f;
+      color: white;
+      height: 100%;
+      position: fixed;
+      left: -280px;
+      top: 0;
+      transition: left 0.3s ease;
+      z-index: 1001;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+    }
+    
+    #sidebar.active {
+      left: 0;
+    }
+    
+    .sidebar-header {
+      padding: 25px 20px;
+      background: #2c3e50;
+      text-align: center;
+      position: relative;
+    }
+    
+    .sidebar-header h2 {
+      font-size: 1.4rem;
+      margin: 0;
+    }
+    
+    .close-sidebar {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    
+    .menu-item {
+      padding: 18px 25px;
+      border-bottom: 1px solid #2c3e50;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .menu-item:hover {
+      background: #2c3e50;
+    }
+    
+    .menu-item i {
+      margin-right: 15px;
+      width: 20px;
+      text-align: center;
+    }
+    
+    /* ===== MAIN CONTENT ===== */
+    #mainContent {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      transition: margin-left 0.3s ease;
+    }
+    
+    .main-header {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      position: relative;
+      z-index: 100;
+    }
+    
+    #menuToggle {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: #2c3e50;
+      cursor: pointer;
+      margin-right: 15px;
+    }
+    
+    .page-title {
+      flex: 1;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    
+    /* ===== MAP CONTAINER ===== */
+    #mapContainer {
+      flex: 1;
+      position: relative;
+    }
+    
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+    
+    /* ===== MAP CONTROLS ===== */
+    .map-controls {
+      position: absolute;
+      top: 80px;
+      right: 15px;
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .map-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: white;
+      border: none;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .map-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 3px 15px rgba(0,0,0,0.3);
+    }
+    
+    .map-btn.fish-btn {
+      background: #4CAF50;
+      color: white;
+    }
+    
+    .map-btn.location-btn {
+      background: #2196F3;
+      color: white;
+    }
+    
+    .map-btn.pin-btn {
+      background: #FF5722;
+      color: white;
+    }
+    
+    .map-btn.refresh-btn {
+      background: #9C27B0;
+      color: white;
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+    }
+    
+    /* ===== FORECAST CONTAINER ===== */
+    #forecastContainer {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background: white;
+    }
+    
+    #forecastContainer.active {
+      display: block;
+    }
+    
+    .forecast-header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .forecast-header h2 {
+      color: #2c3e50;
+      margin-bottom: 5px;
+    }
+    
+    .location-info {
+      color: #666;
+      font-size: 1.1rem;
+    }
+    
+    /* ===== FORECAST SELECTION ===== */
+    .forecast-selection {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    .forecast-selection.active {
+      display: block;
+    }
+    
+    .location-select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      margin-bottom: 15px;
+      background: white;
+    }
+    
+    /* ===== NEW FORECAST TABLE ===== */
+    .forecast-table-container {
+      overflow-x: auto;
+      margin-bottom: 30px;
+    }
+    
+    .forecast-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+    
+    .forecast-table th {
+      background: #2c3e50;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: 500;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .forecast-table td {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid #e0e0e0;
+      transition: background 0.3s;
+    }
+    
+    .forecast-table tr:hover {
+      background: #f8f9fa;
+    }
+    
+    .day-header-cell {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #2c3e50;
+      position: sticky;
+      left: 0;
+      z-index: 5;
+    }
+    
+    .day-score {
+      margin-top: 5px;
+      padding: 5px 10px;
+      border-radius: 15px;
+      font-weight: bold;
+      color: white !important;
+    }
+    
+    .time-slot-cell {
+      min-width: 120px;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+    
+    .time-slot-cell:hover {
+      transform: scale(1.02);
+    }
+    
+    .score-display {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 5px;
+    }
+    
+    .time-display {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    /* ===== CATCH LOGGER ===== */
+    #catchLogger {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: white;
+      border-radius: 20px 20px 0 0;
+      padding: 25px;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+      z-index: 1002;
+      max-height: 80vh;
+      overflow-y: auto;
+      transition: transform 0.4s ease;
+    }
+    
+    #catchLogger.active {
+      display: block;
+      transform: translateY(0);
+    }
+    
+    .catch-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .catch-header h3 {
+      color: #2c3e50;
+    }
+    
+    #closeCatchLogger {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: #666;
+      cursor: pointer;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #2c3e50;
+    }
+    
+    .form-control {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    
+    .location-options {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .location-option {
+      flex: 1;
+      min-width: 120px;
+      padding: 15px 10px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .location-option.active {
+      border-color: #4CAF50;
+      background: #f1f8e9;
+    }
+    
+    .location-option i {
+      font-size: 1.5rem;
+      margin-bottom: 5px;
+      display: block;
+    }
+    
+    .current-conditions {
+      background: #f0f7ff;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .condition-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+    
+    .btn {
+      padding: 14px 25px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .btn-primary {
+      background: #4CAF50;
+      color: white;
+      width: 100%;
+    }
+    
+    .btn-primary:hover {
+      background: #3d8b40;
+    }
+    
+    .btn-secondary {
+      background: #2196F3;
+      color: white;
+    }
+    
+    /* ===== LOCATION DRAWER ===== */
+    #locationDrawer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: white;
+      border-radius: 20px 20px 0 0;
+      padding: 25px;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+      z-index: 1000;
+      transform: translateY(100%);
+      transition: transform 0.4s ease;
+    }
+    
+    #locationDrawer.active {
+      transform: translateY(0);
+    }
+    
+    .location-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .location-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    
+    .btn-group {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .btn-favorite {
+      background: #FFC107;
+      color: #333;
+      flex: 1;
+    }
+    
+    .btn-forecast {
+      background: #4CAF50;
+      color: white;
+      flex: 2;
+    }
+    
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      #sidebar {
+        width: 100%;
+        left: -100%;
+      }
+      
+      .forecast-table {
+        font-size: 0.9rem;
+      }
+      
+      .forecast-table th,
+      .forecast-table td {
+        padding: 8px;
+      }
+      
+      .location-option {
+        min-width: 100px;
+        padding: 10px 5px;
+      }
+    }
+    
+    /* ===== UTILITY CLASSES ===== */
+    .hidden {
+      display: none !important;
+    }
+    
+    .success-message {
+      background: #d4edda;
+      color: #155724;
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9998;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+    
+    .error-message {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9998;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+    
+    .info-message {
+      background: #d1ecf1;
+      color: #0c5460;
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9998;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+    
+    .custom-marker-popup .leaflet-popup-content {
+      min-width: 200px;
+    }
+    
+    .custom-marker-popup .delete-btn {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+      width: 100%;
+    }
+    
+    /* ===== MODAL STYLES ===== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+    
+    .modal-content {
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+    }
+    
+    .modal-title {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .modal-close-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 20px;
+      width: 100%;
+    }
+  </style>
 </head>
 <body>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="hidden">
+    <div class="spinner"></div>
+    <p id="loadingText">Φόρτωση...</p>
+  </div>
 
-    <div class="header">
-        <div style="letter-spacing: 2px; font-size: 0.9rem; opacity: 0.7;">VIDALIS SCORE</div>
-        <div class="score-box">85</div>
-        <div style="font-size: 1.4rem; font-weight: bold;">ΠΕΙΡΑΙΑΣ</div>
+  <!-- Messages -->
+  <div id="successMessage" class="success-message"></div>
+  <div id="errorMessage" class="error-message"></div>
+  <div id="infoMessage" class="info-message"></div>
+
+  <!-- Sidebar Menu -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <h2>🎣 Fishing Forecast</h2>
+      <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 5px;">v4.0</p>
+      <button class="close-sidebar" onclick="closeSidebar()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="menu-item" onclick="showMapView()">
+      <i class="fas fa-map-marked-alt"></i>
+      <span>Χάρτης</span>
+    </div>
+    
+    <div class="menu-item" onclick="showForecastSelection()">
+      <i class="fas fa-cloud-sun"></i>
+      <span>Πρόγνωση</span>
+    </div>
+    
+    <div class="menu-item" onclick="showFavorites()">
+      <i class="fas fa-star"></i>
+      <span>Αγαπημένα</span>
+    </div>
+    
+    <div class="menu-item" onclick="showCatchLogger()">
+      <i class="fas fa-fish"></i>
+      <span>Καταγραφή Ψαριού</span>
+    </div>
+    
+    <div class="menu-item" onclick="showHistory()">
+      <i class="fas fa-history"></i>
+      <span>Ιστορικό Ψαριών</span>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div id="mainContent">
+    <!-- Header -->
+    <header class="main-header">
+      <button id="menuToggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+      </button>
+      
+      <div class="page-title" id="pageTitle">
+        Χάρτης Ψαρέματος
+      </div>
+    </header>
+
+    <!-- Map View -->
+    <div id="mapContainer">
+      <div id="map"></div>
+      
+      <!-- Map Controls -->
+      <div class="map-controls">
+        <button class="map-btn fish-btn" onclick="showCatchLoggerFromMap()" title="Καταγραφή Ψαριού">
+          <i class="fas fa-fish"></i>
+        </button>
+        <button class="map-btn location-btn" onclick="locateUser()" title="Βρες την τοποθεσία μου">
+          <i class="fas fa-location-crosshairs"></i>
+        </button>
+        <button class="map-btn pin-btn" onclick="togglePinMode()" title="Προσθήκη Πινέζας">
+          <i class="fas fa-map-pin"></i>
+        </button>
+        <button class="map-btn refresh-btn" onclick="refreshApp()" title="Ανανέωση">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+      </div>
     </div>
 
-    <div id="map"></div>
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <span>Άνεμος</span>
-            <span class="stat-val">4 Bf (ΒΑ)</span>
-        </div>
-        <div class="stat-card">
-            <span>Υγρασία</span>
-            <span class="stat-val">65%</span>
-        </div>
-        <div class="stat-card">
-            <span>Φεγγάρι</span>
-            <span class="stat-val">Γέμιση</span>
-        </div>
-        <div class="stat-card">
-            <span>Πίεση</span>
-            <span class="stat-val">1015 hPa</span>
-        </div>
+    <!-- Forecast View -->
+    <div id="forecastContainer">
+      <div class="forecast-header">
+        <h2 id="forecastLocation">Πρόγνωση Ψαρέματος</h2>
+        <div class="location-info" id="forecastTime"></div>
+      </div>
+      
+      <!-- Location Selection -->
+      <div class="forecast-selection" id="forecastSelection">
+        <h3 style="color: #2c3e50; margin-bottom: 15px;">Επιλογή Τοποθεσίας:</h3>
+        <select class="location-select" id="locationSelect" onchange="loadSelectedLocationForecast()">
+          <option value="">-- Επιλέξτε τοποθεσία --</option>
+        </select>
+        <button class="btn btn-primary" onclick="showForecastFromSelection()">
+          <i class="fas fa-cloud-sun"></i> Προβολή Πρόγνωσης
+        </button>
+      </div>
+      
+      <!-- Forecast Table -->
+      <div class="forecast-table-container" id="forecastTableContainer" style="display: none;">
+        <table class="forecast-table" id="forecastTable">
+          <thead>
+            <tr>
+              <th>Ημέρα</th>
+              <th>06:00</th>
+              <th>09:00</th>
+              <th>12:00</th>
+              <th>15:00</th>
+              <th>18:00</th>
+              <th>21:00</th>
+            </tr>
+          </thead>
+          <tbody id="forecastTableBody">
+            <!-- Rows will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+      
+      <button class="btn btn-secondary" onclick="showMapView()">
+        <i class="fas fa-arrow-left"></i> Επιστροφή στον Χάρτη
+      </button>
     </div>
-
-    <div class="footer">
-        Τελευταία ενημέρωση: 30/01/2026<br>
-        Powered by Fishing Forecast Pro
+  </div>
+  <!-- Location Drawer (Bottom Sheet) -->
+  <div id="locationDrawer">
+    <div class="location-header">
+      <h3 class="location-title" id="selectedLocationName">Τοποθεσία</h3>
     </div>
+    
+    <div class="btn-group">
+      <button class="btn btn-favorite" onclick="toggleFavorite()">
+        <i id="favoriteIcon" class="far fa-star"></i>
+        Αγαπημένο
+      </button>
+      <button class="btn btn-forecast" onclick="getForecastFromDrawer()">
+        <i class="fas fa-cloud-sun"></i>
+        Δες Πρόγνωση
+      </button>
+    </div>
+  </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // Αρχικοποίηση χάρτη στον Πειραιά
-        var map = L.map('map').setView([37.943, 23.646], 13);
+  <!-- Catch Logger (Bottom Sheet) -->
+  <div id="catchLogger">
+    <div class="catch-header">
+      <h3>🎣 Καταγραφή Ψαριού</h3>
+      <button id="closeCatchLogger" onclick="closeCatchLogger()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="location-options">
+      <div class="location-option active" onclick="selectLocationType('current')" id="locationCurrent">
+        <i class="fas fa-location-crosshairs"></i>
+        <span>Τρέχουσα Τοποθεσία</span>
+      </div>
+      <div class="location-option" onclick="selectLocationType('selected')" id="locationSelected">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>Επιλεγμένο Σημείο</span>
+      </div>
+      <div class="location-option" onclick="selectLocationType('map')" id="locationMapSelect">
+        <i class="fas fa-map"></i>
+        <span>Επιλογή από Χάρτη</span>
+      </div>
+    </div>
+    
+    <div id="locationInfo" class="current-conditions">
+      <h4 style="margin-bottom: 10px;">Τοποθεσία: <span id="catchLocationName">Φόρτωση...</span></h4>
+      <div class="condition-item">
+        <span>📍 Συντεταγμένες:</span>
+        <span id="catchCoordinates">-</span>
+      </div>
+    </div>
+    
+    <div class="current-conditions" id="currentConditions">
+      <h4 style="margin-bottom: 10px;">Τρέχουσες Συνθήκες:</h4>
+      <!-- Conditions will be inserted here -->
+    </div>
+    
+    <div class="form-group">
+      <label for="fishName">Είδος Ψαριού:</label>
+      <input type="text" id="fishName" class="form-control" placeholder="π.χ. Σαργός, Λαβράκι..." list="fishList" />
+      <datalist id="fishList">
+        <option value="Σαργός">
+        <option value="Λαβράκι">
+        <option value="Συναγρίδα">
+        <option value="Λυθρίνι">
+        <option value="Φαγγρί">
+        <option value="Κέφαλος">
+        <option value="Γόπα">
+        <option value="Μπαρμπούνι">
+        <option value="Μαρμαρούνια">
+        <option value="Χελι">
+      </datalist>
+    </div>
+    
+    <div class="form-group">
+      <label for="fishWeight">Βάρος (kg):</label>
+      <input type="number" id="fishWeight" class="form-control" placeholder="π.χ. 2.5" step="0.1" min="0" />
+    </div>
+    
+    <div class="form-group">
+      <label for="catchNotes">Σημειώσεις (προαιρετικά):</label>
+      <textarea id="catchNotes" class="form-control" rows="3" placeholder="Σημειώσεις για το ψάρεμα..."></textarea>
+    </div>
+    
+    <button class="btn btn-primary" onclick="submitCatch()">
+      <i class="fas fa-save"></i> Καταγραφή
+    </button>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Main App Script -->
+  <script>
+    // ===== GLOBAL VARIABLES =====
+    let map;
+    let currentLocation = null;
+    let markers = [];
+    let customPins = [];
+    let currentForecast = null;
+    let currentConditions = {};
+    let userLocationMarker = null;
+    let isPinMode = false;
+    let catchLocationType = 'current';
+    let userCoordinates = null;
+    let isSelectingCatchPoint = false;
+    let selectedCatchPoint = null;
+    let satelliteLayer, streetLayer;
+    
+    // ===== APP INITIALIZATION =====
+    function initApp() {
+      showLoading("Φόρτωση εφαρμογής...");
+      initMap();
+      loadLocations();
+      loadCustomPins();
+      hideLoading();
+      
+      // Try to get user location
+      setTimeout(() => {
+        locateUser();
+      }, 1000);
+    }
+    
+    function initMap() {
+      // Initialize map centered on Greece
+      map = L.map('map', {
+        zoomControl: false,
+        tap: false
+      }).setView([37.9, 23.7], 8);
+      
+      // Create tile layers
+      satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri',
+        maxZoom: 19
+      });
+      
+      streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+      });
+      
+      // Add satellite layer by default
+      satelliteLayer.addTo(map);
+      
+      // Add layer control
+      L.control.layers({
+        "Δορυφόρος": satelliteLayer,
+        "Χάρτης": streetLayer
+      }).addTo(map);
+      
+      // Add click handler for pins and location selection
+      map.on('click', function(e) {
+        if (isPinMode) {
+          addCustomPin(e.latlng);
+        } else if (isSelectingCatchPoint) {
+          selectCatchPointFromMap(e.latlng);
+        }
+      });
+    }
+    
+    function loadLocations() {
+      google.script.run.withSuccessHandler(function(locations) {
+        markers.forEach(marker => map.removeLayer(marker));
+        markers = [];
         
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
-
-        L.marker([37.943, 23.646]).addTo(map)
-            .bindPopup('Σημείο Ψαρέματος: Πειραιάς')
-            .openPopup();
-    </script>
-
-</body>
-</html>
+        locations.forEach(function(loc) {
+          if (loc.lat && loc.lon) {
+            const icon = L.divIcon({
+              html: `<div style="background: ${loc.favorite ? '#FFC107' : '#4CAF50'}; 
+                               width: 30px; 
+                               height: 30px; 
+                               border-radius: 50%; 
+                               border: 3px solid white;
+                               box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                               display: flex;
+                               align-items: center;
+                               justify-content: center;
+                               color: white;
+                               font-weight: bold;
+                               font-size: 14px;">${loc.favorite ? '★' : '🎣'}</div>`,
+              className: 'custom-marker',
+              iconSize: [30, 30],
+              iconAnchor: [15, 30]
+            });
+            
+            const marker = L.marker([loc.lat, loc.lon], { icon: icon })
+              .addTo(map)
+              .on('click', function(e) {
+                e.originalEvent.stopPropagation();
+                selectLocation(loc);
+              });
+            
+            markers.push(marker);
+          }
+        });
+      }).withFailureHandler(function(error) {
+        showError("Σφάλμα φόρτωσης τοποθεσιών");
+      }).getLocations();
+    }
+    
+    function loadCustomPins() {
+      google.script.run.withSuccessHandler(function(pins) {
+        console.log("Loading custom pins:", pins.length);
+        
+        // Clear existing custom pins
+        customPins.forEach(pin => {
+          if (pin.marker) {
+            map.removeLayer(pin.marker);
+          }
+        });
+        
+        customPins = pins;
+        
+        pins.forEach(function(pin, index) {
+          // Check if this is a fish catch
+          const isFishCatch = pin.type === 'fish' || pin.name.includes('🎣');
+          
+          const icon = L.divIcon({
+            html: `<div style="background: ${pin.color || (isFishCatch ? '#4CAF50' : '#FF5722')}; 
+                             width: 30px; 
+                             height: 30px; 
+                             border-radius: ${isFishCatch ? '50%' : '50% 50% 50% 0'}; 
+                             border: 2px solid white;
+                             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                             transform: ${isFishCatch ? 'none' : 'rotate(-45deg)'};
+                             display: flex;
+                             align-items: center;
+                             justify-content: center;
+                             color: white;
+                             font-weight: bold;
+                             font-size: 14px;">${isFishCatch ? '🎣' : '📍'}</div>`,
+            className: 'custom-pin',
+            iconSize: [30, 30],
+            iconAnchor: [15, 30]
+          });
+          
+          const marker = L.marker([pin.lat, pin.lon], { icon: icon })
+            .addTo(map)
+            .bindPopup(`
+              <div class="custom-marker-popup">
+                <strong>${pin.name}</strong><br>
+                <small>${new Date(pin.timestamp).toLocaleDateString('el-GR')}</small><br>
+                <button class="delete-btn" onclick="deleteCustomPin(${pin.id})">🗑️ Διαγραφή</button>
+              </div>
+            `);
+          
+          pin.marker = marker;
+        });
+      }).withFailureHandler(function(error) {
+        console.error("Error loading custom pins:", error);
+      }).getCustomPins();
+    }
+    
+    // ===== LOCATION HANDLING =====
+    function selectLocation(location) {
+      currentLocation = location;
+      
+      // Update drawer content
+      document.getElementById('selectedLocationName').textContent = location.name;
+      document.getElementById('favoriteIcon').className = location.favorite ? 'fas fa-star' : 'far fa-star';
+      
+      // Show location drawer
+      document.getElementById('locationDrawer').classList.add('active');
+    }
+    
+    function closeLocationDrawer() {
+      document.getElementById('locationDrawer').classList.remove('active');
+      currentLocation = null;
+    }
+    
+    function toggleFavorite() {
+      if (!currentLocation) return;
+      
+      const newStatus = !currentLocation.favorite;
+      currentLocation.favorite = newStatus;
+      
+      // Update icon
+      document.getElementById('favoriteIcon').className = newStatus ? 'fas fa-star' : 'far fa-star';
+      
+      // Update on server
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          showSuccess(newStatus ? "Προστέθηκε στα αγαπημένα" : "Αφαιρέθηκε από τα αγαπημένα");
+          loadLocations(); // Refresh markers
+        } else {
+          showError(result.error);
+        }
+      }).withFailureHandler(function(error) {
+        showError("Σφάλμα ενημέρωσης αγαπημένου");
+      }).toggleFavorite(currentLocation.name, newStatus);
+    }
+    
+    // ===== CUSTOM PINS =====
+    function togglePinMode() {
+      isPinMode = !isPinMode;
+      showInfo(isPinMode ? "🔴 Λειτουργία Πινέζας: Κλικ στον χάρτη για προσθήκη πινέζας" : "Λειτουργία πινέζας απενεργοποιημένη");
+    }
+    
+    function addCustomPin(latlng) {
+      if (!isPinMode) return;
+      
+      const pinName = prompt("Όνομα για τη νέα πινέζα:", "Νέο Σημείο");
+      if (!pinName) return;
+      
+      const pinData = {
+        name: pinName,
+        lat: latlng.lat,
+        lon: latlng.lng,
+        color: "#FF5722",
+        type: "custom"
+      };
+      
+      showLoading("Αποθήκευση πινέζας...");
+      
+      google.script.run.withSuccessHandler(function(result) {
+        hideLoading();
+        if (result.success) {
+          showSuccess("Πινέζα προστέθηκε!");
+          loadCustomPins(); // Reload pins
+        } else {
+          showError("Σφάλμα: " + result.error);
+        }
+        isPinMode = false;
+      }).withFailureHandler(function(error) {
+        hideLoading();
+        showError("Σφάλμα αποθήκευσης πινέζας");
+        isPinMode = false;
+      }).saveCustomPin(pinData);
+    }
+    
+    function deleteCustomPin(pinId) {
+      if (!confirm("Θέλετε να διαγράψετε αυτή την πινέζα;")) return;
+      
+      showLoading("Διαγραφή πινέζας...");
+      
+      google.script.run.withSuccessHandler(function(result) {
+        hideLoading();
+        if (result.success) {
+          showSuccess("Πινέζα διαγράφηκε!");
+          loadCustomPins(); // Reload pins
+        } else {
+          showError("Σφάλμα: " + result.error);
+        }
+      }).withFailureHandler(function(error) {
+        hideLoading();
+        showError("Σφάλμα διαγραφής πινέζας");
+      }).deleteCustomPin(pinId);
+    }
+    
+    // ===== USER LOCATION =====
+    function locateUser() {
+      if (!navigator.geolocation) {
+        showError("Η πλοήγηση δεν υποστηρίζει geolocation");
+        return;
+      }
+      
+      showLoading("Ανίχνευση τοποθεσίας...");
+      
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          
+          userCoordinates = { lat, lon };
+          
+          // Remove existing user marker
+          if (userLocationMarker) {
+            map.removeLayer(userLocationMarker);
+          }
+          
+          // Add new user marker
+          const userIcon = L.divIcon({
+            html: `<div style="background: #2196F3; 
+                             width: 35px; 
+                             height: 35px; 
+                             border-radius: 50%; 
+                             border: 3px solid white;
+                             box-shadow: 0 2px 10px rgba(33, 150, 243, 0.5);
+                             display: flex;
+                             align-items: center;
+                             justify-content: center;
+                             color: white;
+                             font-weight: bold;
+                             font-size: 16px;">📍</div>`,
+            className: 'user-marker',
+            iconSize: [35, 35],
+            iconAnchor: [17, 35]
+          });
+          
+          userLocationMarker = L.marker([lat, lon], { icon: userIcon })
+            .addTo(map)
+            .bindPopup("📍 Τρέχουσα Τοποθεσία Σας");
+          
+          // Center map on user location
+          map.setView([lat, lon], 12);
+          
+          // Update catch logger location info
+          updateCatchLocationInfo('current');
+          
+          hideLoading();
+          showSuccess("Βρέθηκε η τοποθεσία σας!");
+        },
+        function(error) {
+          hideLoading();
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              showError("Δεν δόθηκε άδεια πρόσβασης στην τοποθεσία");
+              break;
+            case error.POSITION_UNAVAILABLE:
+              showError("Τα δεδομένα τοποθεσίας δεν είναι διαθέσιμα");
+              break;
+            case error.TIMEOUT:
+              showError("Υπέρβαση χρονικού ορίου αιτήματος τοποθεσίας");
+              break;
+            default:
+              showError("Άγνωστο σφάλμα ανίχνευσης τοποθεσίας");
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+    
+    // ===== FORECAST FUNCTIONS =====
+    function showForecastSelection() {
+      document.getElementById('mapContainer').style.display = 'none';
+      document.getElementById('forecastContainer').classList.add('active');
+      document.getElementById('forecastSelection').classList.add('active');
+      document.getElementById('forecastTableContainer').style.display = 'none';
+      document.getElementById('pageTitle').textContent = "Πρόγνωση Ψαρέματος";
+      
+      // Load locations into dropdown
+      loadLocationsIntoDropdown();
+      closeSidebar();
+    }
+    
+    function loadLocationsIntoDropdown() {
+      google.script.run.withSuccessHandler(function(locations) {
+        const select = document.getElementById('locationSelect');
+        select.innerHTML = '<option value="">-- Επιλέξτε τοποθεσία --</option>';
+        
+        locations.forEach(function(loc) {
+          const option = document.createElement('option');
+          option.value = loc.name;
+          option.textContent = `${loc.favorite ? '⭐ ' : ''}${loc.name}`;
+          select.appendChild(option);
+        });
+      }).getLocations();
+    }
+    
+    function showForecastFromSelection() {
+      const selectedLocation = document.getElementById('locationSelect').value;
+      if (!selectedLocation) {
+        showError("Παρακαλώ επιλέξτε μια τοποθεσία");
+        return;
+      }
+      
+      getForecastForLocation(selectedLocation);
+    }
+    
+    function getForecastForLocation(locationName) {
+      showLoading("Λήψη πρόβλεψης...");
+      
+      google.script.run.withSuccessHandler(function(response) {
+        hideLoading();
+        
+        if (response.success) {
+          currentForecast = response.forecast;
+          displayForecast(response.forecast);
+          document.getElementById('forecastSelection').classList.remove('active');
+          document.getElementById('forecastTableContainer').style.display = 'block';
+        } else {
+          showError("Σφάλμα: " + response.error);
+        }
+      }).withFailureHandler(function(error) {
+        hideLoading();
+        showError("Σφάλμα σύνδεσης με τον διακομιστή");
+      }).getForecastForLocation(locationName);
+    }
+    
+    function getForecastFromDrawer() {
+      if (!currentLocation) return;
+      getForecastForLocation(currentLocation.name);
+      showForecastView();
+      closeLocationDrawer();
+    }
+    
+    function getForecastForCoordinates(lat, lon) {
+      showLoading("Λήψη πρόβλεψης για το σημείο...");
+      
+      google.script.run.withSuccessHandler(function(response) {
+        hideLoading();
+        
+        if (response.success) {
+          currentForecast = response.forecast;
+          displayForecast(response.forecast);
+          showForecastView();
+        } else {
+          showError("Σφάλμα: " + response.error);
+        }
+      }).withFailureHandler(function(error) {
+        hideLoading();
+        showError("Σφάλμα σύνδεσης με τον διακομιστή");
+      }).getForecastForCoordinates(lat, lon);
+    }
+    
+    function displayForecast(forecast) {
+      // Update page title
+      document.getElementById('pageTitle').textContent = "Πρόβλεψη Ψαρέματος";
+      document.getElementById('forecastLocation').textContent = `🎣 ${forecast.location}`;
+      document.getElementById('forecastTime').textContent = `Ενημερώθηκε: ${new Date().toLocaleTimeString('el-GR')}`;
+      
+      // Clear previous content
+      const tableBody = document.getElementById('forecastTableBody');
+      tableBody.innerHTML = '';
+      
+      // Create table rows (days vertical)
+      forecast.days.forEach(function(day) {
+        const row = document.createElement('tr');
+        
+        // Day cell
+        const dayCell = document.createElement('td');
+        dayCell.className = 'day-header-cell';
+        dayCell.innerHTML = `
+          <div style="font-weight: bold; color: #2c3e50;">${day.formattedDate}</div>
+          <div style="font-size: 0.9rem; color: #666;">${day.moonEmoji} Σελήνη</div>
+          <div class="day-score" style="background: ${day.dayColor}">
+            ${day.dayScore}%
+          </div>
+        `;
+        row.appendChild(dayCell);
+        
+        // Time slot cells (horizontal)
+        day.timeSlots.forEach(function(slot) {
+          const timeCell = document.createElement('td');
+          timeCell.className = 'time-slot-cell';
+          timeCell.style.backgroundColor = slot.scoreColor;
+          timeCell.style.cursor = 'pointer';
+          timeCell.onclick = function() {
+            showTimeSlotDetails(day, slot);
+          };
+          
+          timeCell.innerHTML = `
+            <div class="score-display">${slot.scorePercent}% ${slot.scoreEmoji}</div>
+            <div class="time-display">${slot.time}</div>
+            <div style="font-size: 0.8rem; margin-top: 3px;">
+              🌡️ ${slot.airTemp}°C<br>
+              💨 ${slot.windSpeed}km/h
+            </div>
+          `;
+          row.appendChild(timeCell);
+        });
+        
+        tableBody.appendChild(row);
+      });
+      
+      // Store current conditions from first time slot of today
+      if (forecast.days.length > 0 && forecast.days[0].timeSlots.length > 0) {
+        currentConditions = forecast.days[0].timeSlots[0];
+        currentConditions.locationName = forecast.location;
+        currentConditions.latitude = forecast.coordinates.lat;
+        currentConditions.longitude = forecast.coordinates.lon;
+        
+        // Update catch logger conditions
+        updateC
