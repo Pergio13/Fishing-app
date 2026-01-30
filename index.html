@@ -3,19 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fishing Forecast</title>
+    <title>Fishing Forecast Pro</title>
+    
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2972/2972169.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
     <style>
-        body { font-family: sans-serif; background: #1a252f; color: white; text-align: center; margin: 0; display: flex; flex-direction: column; justify-content: center; height: 100vh; }
-        .score { font-size: 5rem; font-weight: bold; color: #3498db; }
-        .label { font-size: 1.5rem; color: #bdc3c7; }
-        .info { margin-top: 20px; font-size: 1rem; color: #7f8c8d; }
+        :root { --bg: #1a252f; --accent: #3498db; --text: #ecf0f1; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; overflow-x: hidden; }
+        
+        .header { padding: 20px; text-align: center; background: rgba(0,0,0,0.2); }
+        .score-box { font-size: 5rem; font-weight: 800; color: var(--accent); margin: 10px 0; }
+        
+        #map { height: 300px; width: 90%; margin: 20px auto; border-radius: 15px; border: 2px solid var(--accent); }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; }
+        .stat-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; text-align: center; }
+        .stat-val { display: block; font-size: 1.2rem; font-weight: bold; color: var(--accent); }
+        
+        .footer { padding: 20px; font-size: 0.8rem; color: #7f8c8d; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="label">VIDALIS SCORE</div>
-    <div class="score">85</div> 
-    <div class="label">ΠΕΙΡΑΙΑΣ</div>
-    <div class="info">Ενημερώθηκε: 30/01/2026</div>
+
+    <div class="header">
+        <div style="letter-spacing: 2px; font-size: 0.9rem; opacity: 0.7;">VIDALIS SCORE</div>
+        <div class="score-box">85</div>
+        <div style="font-size: 1.4rem; font-weight: bold;">ΠΕΙΡΑΙΑΣ</div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span>Άνεμος</span>
+            <span class="stat-val">4 Bf (ΒΑ)</span>
+        </div>
+        <div class="stat-card">
+            <span>Υγρασία</span>
+            <span class="stat-val">65%</span>
+        </div>
+        <div class="stat-card">
+            <span>Φεγγάρι</span>
+            <span class="stat-val">Γέμιση</span>
+        </div>
+        <div class="stat-card">
+            <span>Πίεση</span>
+            <span class="stat-val">1015 hPa</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        Τελευταία ενημέρωση: 30/01/2026<br>
+        Powered by Fishing Forecast Pro
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Αρχικοποίηση χάρτη στον Πειραιά
+        var map = L.map('map').setView([37.943, 23.646], 13);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        L.marker([37.943, 23.646]).addTo(map)
+            .bindPopup('Σημείο Ψαρέματος: Πειραιάς')
+            .openPopup();
+    </script>
+
 </body>
 </html>
