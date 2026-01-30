@@ -1,3 +1,0 @@
-      - name: Create clasprc file
-        run: |
-          echo "${{ secrets.CLASPRC_JSON }}" > ~/.clasprc.json
